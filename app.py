@@ -19,18 +19,28 @@ def decrypt():
             logger.error("Missing fileBase64 or password in request")
             return jsonify({'error': 'Missing base64 data or password'}), 400
 
-        file_data = base64.b64decode(data['fileBase64'])
+        # Decode base64 data
+        try:
+            file_data = base64.b64decode(data['fileBase64'])
+        except base64.binascii.Error as e:
+            logger.error(f"Base64 decoding error: {str(e)}")
+            return jsonify({'error': 'Invalid base64 data'}), 400
+
         password = data['password']
+        logger.debug(f"Received file data length: {len(file_data)}, password: {password}")
 
         # Decrypt the file
         file = io.BytesIO(file_data)
         decrypted = io.BytesIO()
-        with msoffcrypto.OfficeFile(file) as office_file:
-            if not office_file.is_encrypted():
-                logger.error("File is not encrypted")
-                return jsonify({'error': 'File is not encrypted'}), 400
-            office_file.load_key(password=password)
-            office_file.decrypt(decrypted)
+
+        # Use OfficeFile without context manager
+        office_file = msoffcrypto.OfficeFile(file)
+        if not office_file.is_encrypted():
+            logger.error("File is not encrypted")
+            return jsonify({'error': 'File is not encrypted'}), 400
+
+        office_file.load_key(password=password)
+        office_file.decrypt(decrypted)
 
         # Read the decrypted Excel file
         decrypted.seek(0)
@@ -44,10 +54,10 @@ def decrypt():
     except base64.binascii.Error as e:
         logger.error(f"Base64 decoding error: {str(e)}")
         return jsonify({'error': 'Invalid base64 data'}), 400
-    except msoffcrypto.exceptions.InvalidFileError as e:
+    except msoffcrypto.exceptions.FileFormatError as e:
         logger.error(f"Invalid file format: {str(e)}")
         return jsonify({'error': 'Invalid or corrupt Excel file'}), 400
-    except msoffcrypto.exceptions.DecryptionError as e:
+    except msoffcrypto.exceptions.InvalidKeyError as e:
         logger.error(f"Decryption failed: {str(e)}")
         return jsonify({'error': 'Incorrect password or file format'}), 400
     except MemoryError as e:
@@ -55,7 +65,7 @@ def decrypt():
         return jsonify({'error': 'File too large for server'}), 400
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
-        return jsonify({'error': 'Internal server error'}), 500
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
