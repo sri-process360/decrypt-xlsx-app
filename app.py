@@ -50,6 +50,9 @@ def decrypt():
     except msoffcrypto.exceptions.DecryptionError as e:
         logger.error(f"Decryption failed: {str(e)}")
         return jsonify({'error': 'Incorrect password or file format'}), 400
+    except MemoryError as e:
+        logger.error(f"Memory error: {str(e)}")
+        return jsonify({'error': 'File too large for server'}), 400
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
