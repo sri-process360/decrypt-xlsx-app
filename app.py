@@ -62,7 +62,7 @@ def decrypt():
         return jsonify({'error': 'Incorrect password or file format'}), 400
     except MemoryError as e:
         logger.error(f"Memory error: {str(e)}")
-        return jsonify({'error': 'File too large for server'}), 400
+        return jsonify({'error': 'File too larges for server'}), 400
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
         return jsonify({'error': f'Internal server error: {str(e)}'}), 500
